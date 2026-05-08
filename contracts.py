@@ -1,0 +1,11 @@
+# AMM
+uniswap_v3_pool_address_usdt = "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36"
+uniswap_v3_factory_contract_address = "0x1F98431c8aD98578641d994F7fC867375a2F073d"
+
+# Token contracts
+usdc_contract_address = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+usdt_contract_address = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+chainlink_token_contract_address = "0x514910771af9ca656af840dff83e8264ecfd986c"
+
+# Bridges
+cctp_bridge_v2_config_contract_address = "0x798Eea21Cb795caE39bA9948Ee044fe0d1ecE1E3"
