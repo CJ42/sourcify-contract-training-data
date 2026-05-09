@@ -181,7 +181,7 @@ function buildAnalysis(data) {
 
 function buildNarrationTranscript(summary) {
   const proxySentence = summary.proxy.isProxy
-    ? `It is a proxy contract, specifically ${summary.proxy.proxyType || 'an unknown proxy type'}, and the implementation list has ${summary.proxy.implementations.length} entry${summary.proxy.implementations.length === 1 ? '' : 'ies'}.`
+    ? `It is a proxy contract, specifically ${summary.proxy.proxyType || 'an unknown proxy type'}, and the implementation list has ${summary.proxy.implementations.length} ${summary.proxy.implementations.length === 1 ? 'entry' : 'entries'}.`
     : 'It is not a proxy, so the runtime logic sits directly in this verified contract.';
 
   const topLibraries = Object.entries(summary.libraryUsage)
@@ -324,7 +324,12 @@ function html() {
         ['Events', data.signatureCounts.events],
         ['Verified', data.verification.verifiedAt || 'unknown'],
       ];
-      metrics.innerHTML = metricRows.map(([label, value]) => '<div class="metric"><strong>' + label + '</strong><br /><span>' + value + '</span></div>').join('');
+      function esc(v) {
+        const d = document.createElement('span');
+        d.textContent = String(v ?? '');
+        return d.innerHTML;
+      }
+      metrics.innerHTML = metricRows.map(([label, value]) => '<div class="metric"><strong>' + esc(label) + '</strong><br /><span>' + esc(value) + '</span></div>').join('');
     }
 
     function setDetails(data) {

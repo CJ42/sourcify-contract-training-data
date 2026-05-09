@@ -1,5 +1,6 @@
-from pathlib import Path
+import os
 import sys
+from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ROOT = BASE_DIR.parent
@@ -7,9 +8,10 @@ SRC_DIR = REPO_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-SECRET_KEY = "dev-only-secret-key"
-DEBUG = True
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+# --- Security ---
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-only-secret-key-change-in-production")
+DEBUG = os.environ.get("DJANGO_ENV", "development") == "development"
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
