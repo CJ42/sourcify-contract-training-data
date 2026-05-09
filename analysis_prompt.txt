@@ -1,0 +1,5 @@
+# Smart Contract analysis prompt context
+
+Analyse the commonly used imported libraries. Which one are they? From which dependencies are they imported? Which functionalities in particular are used?
+
+If importing `library` contracts, are these directly referenced as `MyLib` or are they inline with shorthand syntax via `using ... for ...`?
