@@ -1,80 +1,9 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.dmypy.json
-nosetests.xml
-coverage.xml
-*.cover
-*.log
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Virtual environments
+*.pyc
 .venv/
-venv/
-env/
-ENV/
-.python-version
-
-# Environments / secrets
+node_modules/
+backend/db.sqlite3
 .env
-.env.*
-!.env.example
-
-# IDEs / editors
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Project-specific: cached Sourcify dumps
-*.json
-!package.json
-!package-lock.json
+storage_layout_image.png
+contract_summary.md
+uniswap_v3_pool_address_usdt.json

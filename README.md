@@ -1,98 +1,95 @@
 # sourcify-contract-training-data
 
-Tooling to collect verified smart-contract data from [Sourcify](https://sourcify.dev/) for use as training data.
+Tooling to collect and analyze verified smart-contract data from [Sourcify](https://sourcify.dev/), now with a minimal full-stack demo:
+
+- **Django backend** exposes contract-analysis endpoints
+- **Express gateway** proxies frontend traffic to Django
+- **Tiny frontend** calls the Express API and renders the analysis
+- **Python analysis core** still lives in `src/`
+
+## Architecture
+
+```text
+Frontend page (frontend/public/index.html)
+        ↓
+Express gateway (frontend/server.js)
+        ↓
+Django API (backend/api/views.py)
+        ↓
+Python analysis service (src/service.py + src/analyser.py)
+        ↓
+Sourcify API
+```
+
+## Repo layout
+
+```text
+backend/     Django project + API endpoints
+frontend/    Express server + static frontend page
+src/         Core Python analysis logic
+```
 
 ## Requirements
 
 - Python 3.10+
-- `pip` (bundled with Python)
+- Node.js 18+
+- `pip`
+- `npm`
 
-Verify your Python version:
-
-```bash
-python3 --version
-```
-
-## Installation
-
-On macOS (Homebrew Python) and many Linux distributions, the system Python is "externally managed" (PEP 668), so installing packages globally with `pip` is blocked. Use a virtual environment instead.
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/<your-org>/sourcify-contract-training-data.git
-cd sourcify-contract-training-data
-```
-
-### 2. Create and activate a virtual environment
+## Backend setup (Django)
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-On Windows (PowerShell):
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-Once activated, your shell prompt should be prefixed with `(.venv)`.
-
-### 3. Install dependencies
-
-```bash
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
+python3 backend/manage.py migrate
+python3 backend/manage.py runserver 127.0.0.1:8000
 ```
 
-### 4. Verify the installation
+### Backend endpoints
+
+- `GET /api/health/`
+- `POST /api/contracts/analyze/`
+
+Sample payload:
+
+```json
+{
+  "chainId": 1,
+  "address": "0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36"
+}
+```
+
+## Frontend setup (Express + static page)
 
 ```bash
-python3 -c "import requests; print(requests.__version__)"
+cd frontend
+npm install
+npm start
 ```
 
-## Running
+By default, Express runs on `http://127.0.0.1:3000` and proxies API traffic to `http://127.0.0.1:8000`.
+
+If needed, override the backend URL:
 
 ```bash
-python3 main.py
+DJANGO_BASE_URL=http://127.0.0.1:8000 npm start
 ```
 
-## Deactivating the virtual environment
+## Running the original Python script
 
-When you are done working, deactivate the venv with:
+The original one-shot analysis flow still works:
 
 ```bash
-deactivate
+python3 src/main.py
 ```
 
-## Dependencies
+## Why this PR matters
 
-| Package    | Purpose                                |
-| ---------- | -------------------------------------- |
-| `requests` | HTTP client used to query the Sourcify API |
+This gives the project a real integration path for the hackathon:
 
-Pinned versions live in [`requirements.txt`](./requirements.txt).
-
-## Troubleshooting
-
-### `error: externally-managed-environment`
-
-This means you tried to `pip install` against the system Python. Always activate the project's virtual environment first:
-
-```bash
-source .venv/bin/activate
-```
-
-Then re-run the install command. Avoid `--break-system-packages`; it can corrupt your system Python.
-
----
-
-# Steps
-
-- [ ] 1. count how many files in "sources"
-- [ ] 2. define the storage layout from the storage slots and draw a diagram out of it extract from "storageLayout"
-- [ ] 3. extract the type of proxy looking at `proxyResolution`
-- [ ] 4. extract from each file the pragma statement used
-- [ ] 5. analyse the OZ imports / common libs imported
+- frontend can trigger live analysis
+- Express can act as the product-facing API layer
+- Django holds the Python-native business logic
+- the Sourcify analyzer stays reusable by both CLI and web flows

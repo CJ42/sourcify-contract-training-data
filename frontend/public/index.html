@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sourcify Contract Analyzer</title>
+    <style>
+      body { font-family: Inter, system-ui, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
+      main { max-width: 960px; margin: 0 auto; padding: 40px 20px 80px; }
+      .card { background: #111827; border: 1px solid #334155; border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+      label { display: block; margin-bottom: 8px; font-size: 14px; color: #94a3b8; }
+      input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #334155; background: #020617; color: #f8fafc; }
+      .row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; }
+      button { margin-top: 16px; padding: 12px 16px; border: 0; border-radius: 10px; background: #38bdf8; color: #082f49; font-weight: 700; cursor: pointer; }
+      pre { white-space: pre-wrap; word-break: break-word; background: #020617; padding: 16px; border-radius: 12px; overflow-x: auto; }
+      .muted { color: #94a3b8; }
+      h1, h2 { margin-top: 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>Sourcify Contract Analyzer</h1>
+        <p class="muted">Frontend page → Express API → Django backend → Sourcify lookup + report generation.</p>
+        <form id="analyze-form">
+          <div class="row">
+            <div>
+              <label for="chainId">Chain ID</label>
+              <input id="chainId" name="chainId" value="1" />
+            </div>
+            <div>
+              <label for="address">Contract address</label>
+              <input id="address" name="address" value="0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36" />
+            </div>
+          </div>
+          <button type="submit">Analyze contract</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Status</h2>
+        <pre id="status">Ready.</pre>
+      </section>
+
+      <section class="card">
+        <h2>Summary Markdown</h2>
+        <pre id="summary">No summary yet.</pre>
+      </section>
+
+      <section class="card">
+        <h2>Structured JSON</h2>
+        <pre id="json">No data yet.</pre>
+      </section>
+    </main>
+
+    <script>
+      const form = document.getElementById('analyze-form');
+      const statusEl = document.getElementById('status');
+      const summaryEl = document.getElementById('summary');
+      const jsonEl = document.getElementById('json');
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const payload = {
+          chainId: formData.get('chainId'),
+          address: formData.get('address'),
+        };
+
+        statusEl.textContent = 'Calling Express gateway...';
+        summaryEl.textContent = 'Loading...';
+        jsonEl.textContent = 'Loading...';
+
+        try {
+          const response = await fetch('/api/contracts/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'Unknown API error');
+          }
+
+          statusEl.textContent = 'Success. Express and Django are talking.';
+          summaryEl.textContent = data.summaryMarkdown;
+          jsonEl.textContent = JSON.stringify(data.report, null, 2);
+        } catch (error) {
+          statusEl.textContent = `Request failed: ${error.message}`;
+          summaryEl.textContent = '—';
+          jsonEl.textContent = '—';
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "sourcify-contract-training-data-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Express gateway and tiny UI for the Django Sourcify backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
