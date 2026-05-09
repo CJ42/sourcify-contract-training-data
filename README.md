@@ -2,6 +2,8 @@
 
 Python tooling to collect and analyze verified smart-contract data from [Sourcify](https://sourcify.dev/), now with a minimal full-stack demo and a Cloudflare Worker deployment target.
 
+![Architecture diagram](docs/architecture.png)
+
 ## Architecture
 
 ```text
@@ -56,7 +58,7 @@ npx wrangler deploy
 
 Wrangler will print a live URL like `https://sourcify-worker-demo.<account>.workers.dev`.
 
-> 🔗 **Live demo:** *(deploy and add your URL here)*
+> 🔗 **Live demo:** *(paste your Workers URL here after deploy)*
 
 ## Option B: Local full-stack (Django + Express)
 
