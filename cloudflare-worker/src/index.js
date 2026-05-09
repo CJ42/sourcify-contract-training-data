@@ -25,18 +25,35 @@ const EXAMPLES = [
     chainId: '1',
     address: '0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2',
     note: 'Popular Aave mainnet pool, resolved as an EIP-1967 proxy.',
+    tags: ['Aave', 'DeFi', 'Sponsor-style ecosystem'],
   },
   {
     label: 'Uniswap V3 USDT Pool',
     chainId: '1',
     address: '0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36',
     note: 'Verified Uniswap V3 pool with rich storage layout and many source files.',
+    tags: ['Uniswap', 'DeFi', 'Popular protocol'],
   },
   {
     label: 'Safe Singleton',
     chainId: '1',
     address: '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552',
     note: 'Widely used Safe smart wallet singleton on Ethereum.',
+    tags: ['Safe', 'Wallet', 'Smart account'],
+  },
+  {
+    label: 'ERC-4337 EntryPoint v0.6',
+    chainId: '1',
+    address: '0x0576a174D229E3cFA37253523E645A78A0C91B57',
+    note: 'Core account abstraction contract heavily used across wallet infra such as Pimlico and Biconomy ecosystems.',
+    tags: ['Account Abstraction', 'Pimlico-adjacent', 'Biconomy-adjacent'],
+  },
+  {
+    label: 'USDC Token',
+    chainId: '1',
+    address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    note: 'Massively referenced production token contract that makes for a familiar baseline analysis.',
+    tags: ['Token', 'Production baseline'],
   },
 ];
 
@@ -238,6 +255,7 @@ function html() {
             <strong>${example.label}</strong><br />
             <small>${example.address}</small>
             <p>${example.note}</p>
+            <small>${(example.tags || []).join(' · ')}</small>
           </button>
         `).join('')}
       </div>
@@ -265,6 +283,7 @@ function html() {
       </section>
       <section class="card">
         <h2>Audio transcript analysis</h2>
+        <audio id="audioPlayer" controls style="width: 100%; margin-bottom: 12px;"></audio>
         <pre id="transcript">Pick an example or enter an address.</pre>
       </section>
     </section>
@@ -289,6 +308,7 @@ function html() {
   <script>
     const metrics = document.getElementById('metrics');
     const transcript = document.getElementById('transcript');
+    const audioPlayer = document.getElementById('audioPlayer');
     const storage = document.getElementById('storage');
     const details = document.getElementById('details');
     const jsonEl = document.getElementById('json');
@@ -319,8 +339,14 @@ function html() {
       ].join('\n');
     }
 
+    function buildTtsUrl(text) {
+      return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=' + encodeURIComponent(text.slice(0, 1800));
+    }
+
     async function analyze(chainId, address) {
       transcript.textContent = 'Analyzing contract via Worker…';
+      audioPlayer.removeAttribute('src');
+      audioPlayer.load();
       storage.textContent = 'Loading storage layout…';
       details.textContent = 'Loading import and pragma details…';
       jsonEl.textContent = 'Loading JSON…';
@@ -332,6 +358,7 @@ function html() {
 
       setMetrics(data.analysis);
       transcript.textContent = data.analysis.narrationTranscript;
+      audioPlayer.src = buildTtsUrl(data.analysis.narrationTranscript);
       storage.textContent = data.analysis.storageLayoutDiagram;
       setDetails(data.analysis);
       jsonEl.textContent = JSON.stringify(data.analysis, null, 2);
@@ -340,6 +367,8 @@ function html() {
     document.getElementById('analyzeButton').addEventListener('click', () => {
       analyze(chainIdInput.value.trim(), addressInput.value.trim()).catch((error) => {
         transcript.textContent = 'Request failed: ' + error.message;
+        audioPlayer.removeAttribute('src');
+        audioPlayer.load();
         storage.textContent = '—';
         details.textContent = '—';
         jsonEl.textContent = '—';
