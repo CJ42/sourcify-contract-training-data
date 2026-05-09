@@ -217,6 +217,22 @@ def _md_cell(value: str | None) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
 
 
+def get_compilation_contract_name(data: dict[str, Any]) -> str | None:
+    """Primary verified contract name from Sourcify `compilation.name` (e.g. UniswapV3Pool)."""
+    comp = data.get("compilation") or {}
+    name = comp.get("name")
+    if isinstance(name, str) and name.strip():
+        return name.strip()
+    return None
+
+
+def slugify_contract_filename_prefix(title: str) -> str:
+    """Safe filename prefix from a contract title."""
+    cleaned = re.sub(r"[^\w\-.]+", "_", title.strip(), flags=re.UNICODE)
+    cleaned = re.sub(r"_+", "_", cleaned).strip("._-")
+    return cleaned or "contract"
+
+
 def build_contract_summary_markdown(data: dict[str, Any]) -> str:
     """Markdown summary table: source breakdown, proxy, deployment, verification, library linking."""
     defs = count_solidity_definitions(data)
@@ -350,6 +366,63 @@ def analyse_verified_contract_source_code(data: dict[str, Any]) -> dict[str, Any
         "importsPerFile": imports_by_file,
         "libraryUsage": get_library_usage_summary(imports_by_file),
     }
+
+
+def build_analysis_report_markdown(report: dict[str, Any]) -> str:
+    """Full analysis narrative: files, storage diagram, proxy, pragmas, library usage."""
+    addr = _md_cell(str(report.get("address")))
+    chain = _md_cell(str(report.get("chainId")))
+    compiler = _md_cell(str(report.get("compilerVersion")))
+
+    lines: list[str] = [
+        "# Contract analysis report",
+        "",
+        f"**Chain** `{chain}` · **Address** `{addr}`",
+        "",
+        f"**Compiler:** `{compiler}`",
+        "",
+        "## Source files",
+        "",
+        f"**Count:** {report['sourceFileCount']}",
+        "",
+    ]
+    for path in report["sourceFiles"]:
+        lines.append(f"- `{path}`")
+
+    diagram = report["storageLayoutDiagram"]
+    lines.extend(
+        [
+            "",
+            "## Storage layout",
+            "",
+            "```text",
+            diagram,
+            "```",
+            "",
+        ]
+    )
+
+    proxy = report["proxy"]
+    lines.extend(["## Proxy", ""])
+    if proxy["isProxy"]:
+        impls = proxy.get("implementations") or []
+        impl_text = ", ".join(str(x) for x in impls) if impls else "—"
+        lines.append(f"- **Proxy type:** `{proxy.get('proxyType')}`")
+        lines.append(f"- **Implementations:** `{impl_text}`")
+    else:
+        lines.append("Not a proxy — logic lives in this contract.")
+    lines.append("")
+
+    lines.extend(["## Pragma per file", ""])
+    for path, pragma in report["pragmaPerFile"].items():
+        p = pragma if pragma is not None else "—"
+        lines.append(f"- `{path}`: `{p}`")
+
+    lines.extend(["", "## Library usage (import classification)", ""])
+    for library, count in report["libraryUsage"].items():
+        lines.append(f"- **{library}:** {count}")
+    lines.append("")
+    return "\n".join(lines)
 
 
 def print_analysis_report(report: dict[str, Any]) -> None:
