@@ -1,11 +1,51 @@
 # sourcify-contract-training-data
 
-Tooling to collect verified smart-contract data from [Sourcify](https://sourcify.dev/) for use as training data.
+Python tooling to collect and analyze verified smart-contract data from [Sourcify](https://sourcify.dev/), now with a minimal full-stack demo and a Cloudflare Worker deployment target.
+
+![Architecture diagram](docs/architecture.png)
+
+## Architecture
+
+```text
+Frontend page (frontend/public/index.html)
+        ↓
+Express gateway (frontend/server.js)
+        ↓
+Django API (backend/api/views.py)
+        ↓
+Python analysis service (src/service.py + src/analyser.py)
+        ↓
+Sourcify API
+```
+
+### Alternative: Cloudflare Worker (edge deployment)
+
+```text
+Browser
+  ↓
+Cloudflare Worker (cloudflare-worker/src/index.js)
+  ↓
+Sourcify API
+```
+
+The Worker replaces the Express + Django stack for a zero-infra, single-file edge deployment.
+It is the recommended demo path for hackathon judges who want a live URL.
+
+## Repo layout
+
+```text
+backend/           Django project + API endpoints
+frontend/          Next.js + Express gateway + static frontend page
+cloudflare-worker/ Edge demo: Worker serves HTML + analysis API without Django or Express
+src/               Core Python analysis logic (used by both Django and the CLI)
+```
 
 ## Requirements
 
 - Python 3.10+
+- Node.js 18+
 - `pip` (bundled with Python)
+- `npm` / `npx`
 
 Verify your Python version:
 
@@ -20,7 +60,7 @@ On macOS (Homebrew Python) and many Linux distributions, the system Python is "e
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-org>/sourcify-contract-training-data.git
+git clone https://github.com/CJ42/sourcify-contract-training-data.git
 cd sourcify-contract-training-data
 ```
 
@@ -38,8 +78,6 @@ python -m venv .venv
 .venv\Scripts\Activate.ps1
 ```
 
-Once activated, your shell prompt should be prefixed with `(.venv)`.
-
 ### 3. Install dependencies
 
 ```bash
@@ -55,40 +93,47 @@ Copy the template and edit it with your real keys (never commit `.env`):
 cp .env.example .env
 ```
 
-Then set at least these variables (names match what `python-dotenv` loads in `src/main.py`):
-
 | Variable | Purpose |
 | -------- | ------- |
-| `OPENAI_API_KEY` | OpenAI API key — required for `--mode run`, storage layout images, and LLM analysis. [platform.openai.com](https://platform.openai.com/) |
-| `ETHERSCAN_API_KEY` | Etherscan **API V2** key — optional; used **only** when Sourcify has no match (fallback). [etherscan.io/apis](https://etherscan.io/apis) |
+| `OPENAI_API_KEY` | Required for `--mode run` (text analysis) and storage layout images. |
+| `ETHERSCAN_API_KEY` | Optional fallback after Sourcify fails. |
+| `DJANGO_SECRET_KEY` | Required in non-dev Django environments. |
+| `DJANGO_ENV` | Set to `production` to harden Django settings. |
+| `INTERNAL_GATEWAY_SECRET` | Optional shared secret between Express and Django. |
 
-Example `.env` body using **placeholders** (replace with your secrets):
-
-```bash
-# OpenAI (required for full pipeline: analyze/run + images)
-OPENAI_API_KEY=sk-your-openai-api-key-placeholder
-
-# Etherscan API V2 (optional fallback after Sourcify fails)
-ETHERSCAN_API_KEY=YourEtherscanApiKeyV2Placeholder
-```
-
-Other optional entries (`HTTP_TIMEOUT`, `ETHERSCAN_API_URL`, `DEBUG_MODE`, …) are documented in [`.env.example`](./.env.example). Fallback behaviour: [`ai/ETHERSCAN_INDEX.md`](./ai/ETHERSCAN_INDEX.md).
-
-### 5. Verify the installation
+## Option A: Cloudflare Worker (recommended for demos)
 
 ```bash
-python3 -c "import requests; print(requests.__version__)"
+cd cloudflare-worker
+npm install
+npx wrangler login
+npx wrangler deploy
 ```
 
-## CLI
+> 🔗 **Live demo:** *(paste your Workers URL here after deploy)*
 
-From the repository root (after activating the virtual environment and installing dependencies):
+## Option B: Local full-stack (Django + Express)
+
+### Backend (Django)
 
 ```bash
-python3 main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
+export DJANGO_SECRET_KEY="your-secret-key"
+export DJANGO_ENV=development
+python3 backend/manage.py migrate
+python3 backend/manage.py runserver 127.0.0.1:8000
 ```
 
-You can also invoke the module path directly:
+### Frontend (Express gateway)
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+## Option C: CLI (Python)
+
+From the repository root (with virtual environment activated):
 
 ```bash
 python3 src/main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
@@ -99,71 +144,40 @@ python3 src/main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
 | Option | Short | Description |
 | ------ | ----- | ----------- |
 | `--chain` | `-c` | **Required.** EVM chain ID (e.g. `1` for Ethereum mainnet). |
-| `--address` | `-a` | **Required.** Verified contract address, with or without the `0x` prefix. |
-| `--mode` | `-m` | What to run: `fetch`, `analyze`, or `run` (default: `run`). |
-| `--output` | `-o` | Only for `--mode fetch`: path for the saved JSON file. If omitted, a name like `sourcify_<chain>_<address-prefix>.json` is used. |
-| `--no-etherscan-fallback` | — | If Sourcify returns **404** or unusable JSON, exit immediately instead of calling the Etherscan API. |
-
-### Data fetching: Sourcify is default; Etherscan is fallback only
-
-**Primary source (always tried first):** [Sourcify](https://sourcify.dev/) — this project is built around Sourcify’s verified bundles (sources, metadata, `storageLayout` when present). Requests use a bounded HTTP timeout (`HTTP_TIMEOUT`, default **15**).
-
-**Fallback only:** If Sourcify returns **404** or a payload **without usable `sources`**, the CLI may call **[Etherscan API V2](https://docs.etherscan.io/)** `getsourcecode` — **only after** Sourcify fails, and **only if** `ETHERSCAN_API_KEY` is set (see [`.env.example`](./.env.example)). Nothing skips or replaces the Sourcify attempt.
-
-Successful payloads include `_dataSource`: `sourcify` or `etherscan` so you can tell provenance in exported JSON.
-
-Fallback setup and troubleshooting: **[`ai/ETHERSCAN_INDEX.md`](./ai/ETHERSCAN_INDEX.md)**.
-
-CLI status lines use **`🔘✅`** on success and **`🔘❌`** on failure so demos fail loudly and clearly.
+| `--address` | `-a` | **Required.** Verified contract address. |
+| `--mode` | `-m` | `fetch`, `analyze`, or `run` (default: `run`). |
+| `--output` | `-o` | With `--mode fetch`: path for the saved JSON. |
+| `--no-etherscan-fallback` | — | Exit instead of calling Etherscan if Sourcify fails. |
 
 ### Modes
 
-- **`fetch`** — Downloads verified contract data (Sourcify-shaped JSON after any fallback) and writes it to disk. No analysis steps.
-- **`analyze`** — Fetches contract data, prints the analysis report, writes Markdown summaries (`contract_summary.md`, `contract_analysis_report.md` by default), and generates the storage layout image. Does **not** call the OpenAI text explanation endpoint.
-- **`run`** — Full pipeline: everything in `analyze`, plus the OpenAI Responses call and the `{ContractName}_openai_analysis.md` file (default).
+- **`fetch`** — Downloads verified contract JSON and writes it to disk.
+- **`analyze`** — Fetches, prints the analysis report, writes Markdown summaries and storage layout image. Does **not** call OpenAI.
+- **`run`** — Full pipeline: everything in `analyze`, plus the OpenAI explanation.
 
 ### Examples
 
 ```bash
-# Full pipeline (same as --mode run)
-python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
+# Full pipeline
+python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
 
-# Explicit mode
-python3 main.py -c 1 -a 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode run
+# Download JSON only
+python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode fetch -o dump.json
 
-# Only download verified metadata + sources as JSON
-python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode fetch -o ./dump.json
-
-# Reports and storage image only (no OpenAI narrative text)
-python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode analyze
-
-# Fail if Sourcify has no match — do not call Etherscan
-python3 main.py --chain 1 --address 0x… --no-etherscan-fallback
+# Reports and storage image only (no OpenAI)
+python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode analyze
 ```
 
-### Environment variables
+## Security notes
 
-| Variable | Purpose |
-| -------- | ------- |
-| `OPENAI_API_KEY` | Required for `--mode run` (text analysis) and for storage layout image generation in `analyze` / `run`. |
-| `ETHERSCAN_API_KEY` | **Optional.** Used **only** when Sourcify fails (404 / no sources); never replaces Sourcify as the first hop. See [`ai/ETHERSCAN_INDEX.md`](./ai/ETHERSCAN_INDEX.md). |
-| `ETHERSCAN_API_URL` | Optional. Defaults to `https://api.etherscan.io/v2/api`. |
-| `HTTP_TIMEOUT` | Optional. Seconds for HTTP requests to Sourcify and Etherscan (default: **`15`**). |
-| `DEBUG_MODE` | When set, also writes the raw fetched JSON (see `DEBUG_JSON`). |
-| `DEBUG_JSON` | Path for the debug JSON dump when `DEBUG_MODE` is enabled. |
-| `CONTRACT_SUMMARY_MD` | Output path for the contract summary Markdown (default: `contract_summary.md`). |
-| `CONTRACT_ANALYSIS_MD` | Output path for the analysis report Markdown (default: `contract_analysis_report.md`). |
-| `OPENAI_ANALYSIS_MD` | Output path for the OpenAI narrative (default: `{ContractName}_openai_analysis.md`). |
-
-Show all options:
-
-```bash
-python3 main.py --help
-```
+| Concern | How it's addressed |
+|---|---|
+| Django `SECRET_KEY` | Read from `DJANGO_SECRET_KEY` env-var; fallback is dev-only |
+| `DEBUG` mode | Defaults to `True` only when `DJANGO_ENV=development` |
+| Express↔Django trust | Optional `INTERNAL_GATEWAY_SECRET` shared header |
+| Worker XSS | All Sourcify values are HTML-escaped via DOM `textContent` before insertion |
 
 ## Deactivating the virtual environment
-
-When you are done working, deactivate the venv with:
 
 ```bash
 deactivate
@@ -171,30 +185,17 @@ deactivate
 
 ## Dependencies
 
-| Package    | Purpose                                |
-| ---------- | -------------------------------------- |
-| `requests` | HTTP client used to query the Sourcify API |
+| Package    | Purpose |
+| ---------- | ------- |
+| `requests` | HTTP client for Sourcify API |
+| `Django`   | Backend API server |
 
-Pinned versions live in [`requirements.txt`](./requirements.txt).
-
-## Troubleshooting
-
-### `error: externally-managed-environment`
-
-This means you tried to `pip install` against the system Python. Always activate the project's virtual environment first:
-
-```bash
-source .venv/bin/activate
-```
-
-Then re-run the install command. Avoid `--break-system-packages`; it can corrupt your system Python.
+Pinned versions in [`requirements.txt`](./requirements.txt).
 
 ---
 
-# Steps
-
 - [ ] 1. count how many files in "sources"
-- [ ] 2. define the storage layout from the storage slots and draw a diagram out of it extract from "storageLayout"
+- [ ] 2. define the storage layout from the storage slots and draw a diagram out of it — extract from `storageLayout`
 - [ ] 3. extract the type of proxy looking at `proxyResolution`
 - [ ] 4. extract from each file the pragma statement used
 - [ ] 5. analyse the OZ imports / common libs imported
