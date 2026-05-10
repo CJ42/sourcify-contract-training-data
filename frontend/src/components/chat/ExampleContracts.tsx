@@ -51,7 +51,7 @@ export function ExampleContracts({ onPickContract }: ExampleContractsProps) {
       <h3 className={styles.heading}>Popular contracts</h3>
       <p className={styles.sub}>
         Fetch verified metadata from Sourcify and render the same style of Markdown report as{' '}
-        <code>contract_analysis_report.md</code> from the Python CLI — then chat with SOLY.
+        <code>contract_analysis_report.md</code> from the Python CLI. With a generated <strong>storage layout diagram</strong>.
       </p>
       <div className={styles.grid}>
         {EXAMPLES.map((ex) => (

@@ -52,9 +52,29 @@ export default function ChatInterface() {
           typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
         )
       }
-      const md = buildSourcifyAnalysisMarkdown(data.analysis, {
+      let md = buildSourcifyAnalysisMarkdown(data.analysis, {
         title: `${ex.title} — Sourcify report`,
       })
+
+      try {
+        const imgRes = await fetch('/api/storage-layout-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            storageLayoutDiagram: data.analysis.storageLayoutDiagram,
+            contractName: ex.title,
+          }),
+        })
+        const imgJson = (await imgRes.json()) as { imageBase64?: string; error?: string }
+        if (imgRes.ok && typeof imgJson.imageBase64 === 'string') {
+          md += `\n\n## Storage layout diagram (generated)\n\n![Storage layout — ${ex.title}](data:image/png;base64,${imgJson.imageBase64})\n`
+        } else {
+          md += `\n\n---\n\n_Storage layout diagram was not generated (${imgJson.error ?? imgRes.statusText}). Set **OPENAI_API_KEY** for image generation._\n`
+        }
+      } catch {
+        md += `\n\n---\n\n_Storage layout diagram request failed (network)._`
+      }
+
       const assistantMsg: UIMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',

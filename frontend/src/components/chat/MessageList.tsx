@@ -1,6 +1,7 @@
 'use client'
 
 import type { UIMessage } from 'ai'
+import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import CodeBlock from './CodeBlock'
@@ -80,6 +81,20 @@ export default function MessageList({
                       }
                       const lang = /language-(\w+)/.exec(className || '')?.[1] || 'text'
                       return <CodeBlock code={body} language={lang} />
+                    },
+                    img({ src, alt }) {
+                      const url = typeof src === 'string' ? src : ''
+                      if (!url) return null
+                      return (
+                        <Image
+                          src={url}
+                          alt={alt ?? 'Storage layout diagram'}
+                          width={1024}
+                          height={1024}
+                          unoptimized
+                          className={styles.reportImage}
+                        />
+                      )
                     },
                   }}>
                   {getMessageText(message)}

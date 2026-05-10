@@ -16,7 +16,7 @@ This repo turns **[Sourcify](https://sourcify.dev/)** verified contract payloads
 ## Demo checklist (3 minutes)
 
 1. **Cloudflare (recommended)** — Deploy Worker + static UI: see [Option B](#option-b-cloudflare-worker-recommended-for-demos). Set `OPENAI_API_KEY` secret so chat replies stream.
-2. **Popular contracts** — On `/chat`, click **Aave Pool Proxy**, **Uniswap V3 USDT Pool**, or **Safe Singleton**. You should see a **full Markdown report** in-thread (Sourcify → same shape as `src/analyser.py` outputs).
+2. **Popular contracts** — On `/chat`, click **Aave Pool Proxy**, **Uniswap V3 USDT Pool**, or **Safe Singleton**. You should see a **full Markdown report** in-thread (Sourcify → same shape as `src/analyser.py` outputs). With **`OPENAI_API_KEY`**, a **generated storage layout diagram** (same pipeline idea as `storage_layout_image.py`) is appended as an image in the same assistant message.
 3. **CLI parity** — Run `python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36` and compare generated `.md` files to the in-browser report.
 
 ## Architecture

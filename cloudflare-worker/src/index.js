@@ -1,4 +1,5 @@
 import { handleChatPost } from './chat-api.js';
+import { handleStorageLayoutImagePost } from './storage-layout-image.js';
 
 const PRAGMA_PATTERN = /pragma\s+solidity\s+([^;]+);/;
 const IMPORT_PATTERN = /import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g;
@@ -223,6 +224,10 @@ export default {
 
     if (url.pathname === '/api/chat' && request.method === 'POST') {
       return handleChatPost(request, env);
+    }
+
+    if (url.pathname === '/api/storage-layout-image' && request.method === 'POST') {
+      return handleStorageLayoutImagePost(request, env);
     }
 
     if (url.pathname === '/api/analyze') {

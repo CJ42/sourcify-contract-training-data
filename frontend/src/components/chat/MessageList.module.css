@@ -23,6 +23,15 @@
   white-space: pre-wrap;
 }
 
+.reportImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 14px;
+  margin: 0.75rem 0;
+  box-shadow: var(--shadow-card, 0 2px 20px rgba(0, 0, 0, 0.06));
+  display: block;
+}
+
 .markdownBody :global(ul),
 .markdownBody :global(ol) {
   margin: 0 0 0.65rem;
