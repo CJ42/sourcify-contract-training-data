@@ -4,8 +4,13 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "deploy": "wrangler deploy",
+    "build:frontend": "node ../scripts/build-worker-static.mjs",
+    "deploy": "npm run build:frontend && wrangler deploy",
     "dev": "wrangler dev"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.41",
+    "ai": "^6.0.116"
   },
   "devDependencies": {
     "wrangler": "^4.90.0"

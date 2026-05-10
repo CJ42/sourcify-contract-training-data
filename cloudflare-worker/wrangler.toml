@@ -1,4 +1,10 @@
 name = "sourcify-worker-demo"
 main = "src/index.js"
 compatibility_date = "2026-05-09"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = true
+
+# Next.js static export (`frontend/out`) — run `npm run build:frontend` in this folder before deploy.
+[assets]
+directory = "../frontend/out"
+binding = "ASSETS"

@@ -1,0 +1,92 @@
+.markdownBody :global(h1) {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+  color: var(--text-primary, #1c1c1e);
+}
+
+.markdownBody :global(h2) {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--text-primary, #1c1c1e);
+}
+
+.markdownBody :global(h3) {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 1rem 0 0.4rem;
+}
+
+.markdownBody :global(p) {
+  margin: 0 0 0.65rem;
+  white-space: pre-wrap;
+}
+
+.markdownBody :global(ul),
+.markdownBody :global(ol) {
+  margin: 0 0 0.65rem;
+  padding-left: 1.25rem;
+}
+
+.markdownBody :global(li) {
+  margin-bottom: 0.25rem;
+}
+
+.markdownBody :global(table) {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  margin: 0.5rem 0 1rem;
+}
+
+.markdownBody :global(th),
+.markdownBody :global(td) {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.markdownBody :global(thead th) {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.markdownBody :global(hr) {
+  border: none;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  margin: 1rem 0;
+}
+
+.markdownBody :global(code) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82em;
+}
+
+.markdownBody :global(p code),
+.markdownBody :global(li code),
+.markdownBody :global(td code) {
+  background: rgba(0, 0, 0, 0.06);
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+}
+
+.errorBanner {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: rgba(180, 40, 40, 0.08);
+  border: 1px solid rgba(180, 40, 40, 0.25);
+  font-size: 0.875rem;
+  color: #8b0000;
+}
+
+.errorDismiss {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}

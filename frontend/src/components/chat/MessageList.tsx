@@ -1,47 +1,57 @@
 'use client'
 
 import type { UIMessage } from 'ai'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import CodeBlock from './CodeBlock'
+import styles from './MessageList.module.css'
 
 interface MessageListProps {
   messages: UIMessage[]
   isLoading: boolean
+  chatError?: Error | null
+  onDismissError?: () => void
 }
 
-/** Extract plain text from UIMessage parts (ai v6 uses parts[], not content string). */
+/** Extract plain text from UIMessage parts (AI SDK v6: text + reasoning). */
 function getMessageText(message: UIMessage): string {
-  if (!message.parts) return ''
-  return message.parts
-    .filter((part) => part.type === 'text')
-    .map((part) => (part as { type: 'text'; text: string }).text)
-    .join('')
-}
+  const parts = message.parts
+  if (!parts?.length) return ''
 
-/** Split a text string into interleaved text and fenced code segments. */
-function parseContent(content: string) {
-  const parts: { type: 'text' | 'code'; content: string; language?: string }[] = []
-  const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g
-  let lastIndex = 0
-  let match
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push({ type: 'text', content: content.slice(lastIndex, match.index) })
+  const chunks: string[] = []
+  for (const part of parts) {
+    if (part.type === 'text' && 'text' in part && typeof part.text === 'string') {
+      chunks.push(part.text)
     }
-    parts.push({ type: 'code', language: match[1] || 'text', content: match[2].trim() })
-    lastIndex = match.index + match[0].length
+    if (part.type === 'reasoning' && 'text' in part && typeof part.text === 'string') {
+      chunks.push(`> ${part.text}`)
+    }
   }
 
-  if (lastIndex < content.length) {
-    parts.push({ type: 'text', content: content.slice(lastIndex) })
-  }
-
-  return parts
+  return chunks.join('\n\n')
 }
 
-export default function MessageList({ messages, isLoading }: MessageListProps) {
+export default function MessageList({
+  messages,
+  isLoading,
+  chatError,
+  onDismissError,
+}: MessageListProps) {
   return (
     <div className="space-y-6">
+      {chatError ? (
+        <div className={styles.errorBanner} role="alert">
+          <strong>Chat request failed.</strong> Check <code>OPENAI_API_KEY</code> in{' '}
+          <code>frontend/.env.local</code> (local) or Worker secrets (deployed).
+          <pre className="mt-2 text-xs whitespace-pre-wrap opacity-90">{chatError.message}</pre>
+          {onDismissError ? (
+            <button type="button" className={styles.errorDismiss} onClick={onDismissError}>
+              Dismiss
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       {messages.map((message) => (
         <div
           key={message.id}
@@ -55,17 +65,25 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
                 <span>✦</span> SOLY
               </div>
               <div
-                className="glass-card px-5 py-4 text-[15px] leading-relaxed"
+                className={`glass-card px-5 py-4 text-[15px] leading-relaxed ${styles.markdownBody}`}
                 style={{ borderLeft: '2px solid rgba(0,0,0,0.15)' }}>
-                {parseContent(getMessageText(message)).map((part, i) =>
-                  part.type === 'code' ? (
-                    <CodeBlock key={i} code={part.content} language={part.language || 'solidity'} />
-                  ) : (
-                    <p key={i} className="whitespace-pre-wrap mb-2 last:mb-0" style={{ color: 'var(--text-primary)' }}>
-                      {part.content}
-                    </p>
-                  )
-                )}
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    code({ className, children }) {
+                      const inline = !className
+                      const body = String(children).replace(/\n$/, '')
+                      if (inline) {
+                        return (
+                          <code>{children}</code>
+                        )
+                      }
+                      const lang = /language-(\w+)/.exec(className || '')?.[1] || 'text'
+                      return <CodeBlock code={body} language={lang} />
+                    },
+                  }}>
+                  {getMessageText(message)}
+                </ReactMarkdown>
               </div>
             </div>
           )}

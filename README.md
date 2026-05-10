@@ -1,71 +1,70 @@
-# sourcify-contract-training-data
+# SOLY · Sourcify contract intelligence
 
-Python tooling to collect and analyze verified smart-contract data from [Sourcify](https://sourcify.dev/), now with a minimal full-stack demo and a Cloudflare Worker deployment target.
+**Hackathon submission — verified-source pipeline + SOLY chat**
+
+This repo turns **[Sourcify](https://sourcify.dev/)** verified contract payloads into **structured analysis**: Markdown reports, optional **OpenAI** narrative and storage-layout imagery — exposed through a **CLI**, a **Next.js** assistant (**SOLY**), and a **single Cloudflare Worker** deploy that ships both the UI and edge APIs.
 
 ![Architecture diagram](docs/architecture.png)
 
+## Why this exists
+
+| Audience | What they get |
+| -------- | ------------- |
+| **Judges (live demo)** | Open the deployed Worker URL → **SOLY** chat UI → pick a **popular contract card** → instant **Markdown report** (storage slots, proxy flags, pragmas, imports — aligned with the Python CLI). Follow up in chat for Solidity Q&A (needs `OPENAI_API_KEY` on the Worker). |
+| **Developers (deep dive)** | Run **`python3 main.py`** locally for full artifacts: `contract_summary.md`, `contract_analysis_report.md`, optional OpenAI markdown, **`storage_layout_image.png`**. |
+
+## Demo checklist (3 minutes)
+
+1. **Cloudflare (recommended)** — Deploy Worker + static UI: see [Option B](#option-b-cloudflare-worker-recommended-for-demos). Set `OPENAI_API_KEY` secret so chat replies stream.
+2. **Popular contracts** — On `/chat`, click **Aave Pool Proxy**, **Uniswap V3 USDT Pool**, or **Safe Singleton**. You should see a **full Markdown report** in-thread (Sourcify → same shape as `src/analyser.py` outputs).
+3. **CLI parity** — Run `python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36` and compare generated `.md` files to the in-browser report.
+
 ## Architecture
 
-**Primary Python path — CLI (no Django required)**
+**Python CLI (primary offline tooling)**
 
 ```text
-python3 main.py  (or python3 src/main.py)
+python3 main.py  (wrapper → src/main.py)
         ↓
-src/fetch_contract.py → Sourcify (+ optional Etherscan)
+Sourcify (+ optional Etherscan fallback)
         ↓
-src/analyser.py → Markdown reports, storage layout image, optional OpenAI
+src/analyser.py → contract_summary.md, contract_analysis_report.md, storage_layout_image.png, optional OpenAI prose
 ```
 
-**SOLY web chat (Next.js)**
+**SOLY web UI (Next.js)**
 
 ```text
-Browser → frontend (Next.js app router)
-        ↓
-/api/chat → OpenAI (Solidity assistant UI)
+/chat → Topic prompts use POST /api/chat (OpenAI).
+Popular-contract cards → GET /api/analyze → Markdown report in the thread (no LLM required for the report).
 ```
 
-### Cloudflare Worker (edge deployment)
+**Cloudflare Worker (one deploy for judges)**
 
 ```text
-Browser
-  ↓
-Cloudflare Worker (cloudflare-worker/src/index.js)
-  ↓
-Sourcify API
+Browser → Worker
+  GET  /api/analyze  → Sourcify + shared JS analysis (pairs with CLI mental model)
+  POST /api/chat     → OpenAI streaming (SOLY)
+  /* static assets    → Next export (frontend/out)
 ```
 
-The Worker is a zero-infra, single-file edge deployment for demos.
-
-### Optional: Django REST API
-
-```text
-Express (frontend/server.js) or direct POST
-        ↓
-Django (backend/api/views.py) → src/service.py + src/analyser.py
-        ↓
-Sourcify API
-```
-
-Install Django only if you use this stack (`pip install -r backend/requirements.txt`).
+Optional Django REST stack remains available for integrators; see [Option D](#option-d-optional-full-stack-django--express-gateway).
 
 ## Repo layout
 
 ```text
-main.py            Repo-root wrapper; runs src/main.py CLI
-src/               Core Python: CLI, analyser, fetch_contract, optional service helpers
-backend/           Optional Django API (not needed for the CLI)
-frontend/          Next.js app (SOLY chat) + legacy Express gateway (server.js)
-cloudflare-worker/ Edge Worker + static HTML demo
+main.py                   Repo-root CLI entrypoint
+src/                      Python: CLI, analyser, fetch_contract
+frontend/                 Next.js (SOLY + GET /api/analyze route for local dev)
+cloudflare-worker/        Worker + chat-api + wrangler static assets
+scripts/build-worker-static.mjs   Moves frontend/src/app/api aside → next export → restores api (Route Handlers incompatible with static export)
+backend/                  Optional Django API
 ```
 
 ## Requirements
 
 - Python 3.10+
 - Node.js 18+
-- `pip` (bundled with Python)
-- `npm` / `npx`
-
-Verify your Python version:
+- `pip`, `npm` / `npx`
 
 ```bash
 python3 --version
@@ -73,39 +72,30 @@ python3 --version
 
 ## Installation
 
-On macOS (Homebrew Python) and many Linux distributions, the system Python is "externally managed" (PEP 668), so installing packages globally with `pip` is blocked. Use a virtual environment instead.
+On macOS/Linux with PEP 668, use a virtual environment.
 
-### 1. Clone the repository
+### 1. Clone
 
 ```bash
 git clone https://github.com/CJ42/sourcify-contract-training-data.git
 cd sourcify-contract-training-data
 ```
 
-### 2. Create and activate a virtual environment
+### 2. Virtualenv
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate
+source .venv/activate   # Windows: .venv\Scripts\Activate.ps1
 ```
 
-On Windows (PowerShell):
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-```
-
-### 3. Install dependencies
+### 3. Python deps
 
 ```bash
 python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-### 4. Environment file (`.env`)
-
-Copy the template and edit it with your real keys (never commit `.env`):
+### 4. Environment
 
 ```bash
 cp .env.example .env
@@ -113,63 +103,61 @@ cp .env.example .env
 
 | Variable | Purpose |
 | -------- | ------- |
-| `OPENAI_API_KEY` | Required for `--mode run` (text analysis) and storage layout images. |
-| `ETHERSCAN_API_KEY` | Optional fallback after Sourcify fails. |
-| `DJANGO_SECRET_KEY` | Only if you run the optional Django backend. |
-| `DJANGO_ENV` | Only if you run Django; set to `production` to harden settings. |
-| `INTERNAL_GATEWAY_SECRET` | Optional shared secret between Express and Django. |
+| `OPENAI_API_KEY` | CLI `--mode run`, storage layout images; **frontend** `.env.local`; Worker secret for `/api/chat`. |
+| `ETHERSCAN_API_KEY` | Optional fallback if Sourcify misses verification. |
+| `DJANGO_*`, `INTERNAL_GATEWAY_SECRET` | Only if you run the optional Django gateway. |
 
-## Option A: CLI (Python) — default tooling
-
-From the repository root (with virtual environment activated):
+## Option A: CLI (Python) — full Markdown artifacts
 
 ```bash
 python3 main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
 ```
 
-Same program as `python3 src/main.py …`.
+Same as `python3 src/main.py …`.
 
 ### Arguments
 
 | Option | Short | Description |
 | ------ | ----- | ----------- |
-| `--chain` | `-c` | **Required.** EVM chain ID (e.g. `1` for Ethereum mainnet). |
-| `--address` | `-a` | **Required.** Verified contract address. |
+| `--chain` | `-c` | **Required.** Chain ID (e.g. `1`). |
+| `--address` | `-a` | **Required.** Contract address. |
 | `--mode` | `-m` | `fetch`, `analyze`, or `run` (default: `run`). |
-| `--output` | `-o` | With `--mode fetch`: path for the saved JSON. |
-| `--no-etherscan-fallback` | — | Exit instead of calling Etherscan if Sourcify fails. |
+| `--output` | `-o` | With `fetch`: JSON output path. |
+| `--no-etherscan-fallback` | — | Skip Etherscan if Sourcify fails. |
 
 ### Modes
 
-- **`fetch`** — Downloads verified contract JSON and writes it to disk.
-- **`analyze`** — Fetches, prints the analysis report, writes Markdown summaries and storage layout image. Does **not** call OpenAI.
-- **`run`** — Full pipeline: everything in `analyze`, plus the OpenAI explanation.
+- **`fetch`** — Save verified JSON.
+- **`analyze`** — Markdown reports + storage diagram PNG (no OpenAI text).
+- **`run`** — Everything + OpenAI narrative Markdown.
 
 ### Examples
 
 ```bash
-# Full pipeline
 python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
-
-# Download JSON only
-python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode fetch -o dump.json
-
-# Reports and storage image only (no OpenAI)
 python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode analyze
 ```
 
 ## Option B: Cloudflare Worker (recommended for demos)
 
 ```bash
-cd cloudflare-worker
-npm install
+cd frontend && npm install
+cd ../cloudflare-worker && npm install
 npx wrangler login
-npx wrangler deploy
+npm run deploy
 ```
 
-> 🔗 **Live demo:** *(paste your Workers URL here after deploy)*
+`npm run deploy` builds **`frontend/out`** (see script below) and uploads the Worker + assets.
 
-## Option C: Next.js SOLY chat (local)
+```bash
+npx wrangler secret put OPENAI_API_KEY
+```
+
+Local **Next.js** uses `frontend/.env.local` for `/api/chat`; production chat uses **`cloudflare-worker/src/chat-api.js`**.
+
+> Paste your **workers.dev** URL here after deploy.
+
+## Option C: Next.js SOLY (local)
 
 ```bash
 cd frontend
@@ -177,62 +165,53 @@ npm install
 npm run dev
 ```
 
-Configure `OPENAI_API_KEY` (and any model keys) via `frontend/.env.local` as needed for `/api/chat`.
+- **`OPENAI_API_KEY`** in `frontend/.env.local` for streamed chat.
+- **`GET /api/analyze`** is implemented at `frontend/src/app/api/analyze/route.ts` so **popular contract cards** work on localhost without Wrangler.
 
 ## Option D: Optional full-stack (Django + Express gateway)
 
-Install backend dependencies (adds Django on top of the base `requirements.txt`):
-
 ```bash
 python3 -m pip install -r backend/requirements.txt
-```
-
-### Backend (Django)
-
-```bash
 export DJANGO_SECRET_KEY="your-secret-key"
 export DJANGO_ENV=development
 python3 backend/manage.py migrate
 python3 backend/manage.py runserver 127.0.0.1:8000
 ```
 
-### Frontend (legacy Express gateway for `public/index.html`)
+Legacy Express gateway (`frontend/server.js`) can proxy to Django if needed.
+
+## Static export + Worker build note
+
+`frontend/next.config.ts` sets `output: "export"`. App Router **Route Handlers** cannot ship in that mode, so:
 
 ```bash
-cd frontend
-npm install
-node server.js
+# Used by cloudflare-worker deploy
+cd frontend && npm run build:static-export
 ```
+
+That runs `scripts/build-worker-static.mjs`, which temporarily moves `frontend/src/app/api`, runs `next build`, then restores **`api/chat`** and **`api/analyze`** for **`npm run dev`**.
 
 ## Security notes
 
-| Concern | How it's addressed |
-|---|---|
-| Django `SECRET_KEY` | Read from `DJANGO_SECRET_KEY` env-var; fallback is dev-only |
-| `DEBUG` mode | Defaults to `True` only when `DJANGO_ENV=development` |
-| Express↔Django trust | Optional `INTERNAL_GATEWAY_SECRET` shared header |
-| Worker XSS | All Sourcify values are HTML-escaped via DOM `textContent` before insertion |
-
-## Deactivating the virtual environment
-
-```bash
-deactivate
-```
+| Concern | Mitigation |
+| ------- | ---------- |
+| Secrets | Never commit `.env`; Worker secrets for production chat. |
+| Django | `DJANGO_SECRET_KEY`, `DJANGO_ENV` for non-dev. |
+| XSS | Prefer `react-markdown` rendering over raw HTML; Worker demo historically escaped DOM text. |
 
 ## Dependencies
 
-| Package    | Purpose |
-| ---------- | ------- |
-| `requests` | HTTP client for Sourcify API |
-| `openai` / `python-dotenv` | CLI analysis and env loading |
-| `Django`   | Optional; install via [`backend/requirements.txt`](./backend/requirements.txt) only if you run the Django API |
-
-Pinned versions in [`requirements.txt`](./requirements.txt).
+| Package | Role |
+| ------- | ---- |
+| `requests`, `openai`, `python-dotenv` | CLI (`requirements.txt`) |
+| `Django` | Optional (`backend/requirements.txt`) |
 
 ---
 
-- [ ] 1. count how many files in "sources"
-- [ ] 2. define the storage layout from the storage slots and draw a diagram out of it — extract from `storageLayout`
-- [ ] 3. extract the type of proxy looking at `proxyResolution`
-- [ ] 4. extract from each file the pragma statement used
-- [ ] 5. analyse the OZ imports / common libs imported
+### Roadmap ideas
+
+- [ ] Count sources / richer stats dashboards  
+- [ ] Deeper storage visualization vs `storageLayout`  
+- [ ] Proxy taxonomy from `proxyResolution`  
+- [ ] Pragma matrix export  
+- [ ] Library / OZ import graphs  

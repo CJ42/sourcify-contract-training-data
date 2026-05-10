@@ -1,3 +1,5 @@
+import { handleChatPost } from './chat-api.js';
+
 const PRAGMA_PATTERN = /pragma\s+solidity\s+([^;]+);/;
 const IMPORT_PATTERN = /import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g;
 const INTERFACE_DEF_PATTERN = /^\s*interface\s+(\w+)/gm;
@@ -211,192 +213,16 @@ async function fetchContract(chainId, address) {
   return response.json();
 }
 
-function html() {
-  return `<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Sourcify Worker Demo</title>
-  <style>
-    :root { color-scheme: dark; }
-    body { margin: 0; font-family: Inter, ui-sans-serif, system-ui, sans-serif; background: #020617; color: #e2e8f0; }
-    main { max-width: 1180px; margin: 0 auto; padding: 32px 18px 80px; }
-    h1, h2, h3 { margin: 0 0 12px; }
-    p { color: #94a3b8; }
-    .grid { display: grid; gap: 18px; }
-    .hero, .card { border: 1px solid #1e293b; background: #0f172a; border-radius: 18px; padding: 20px; }
-    .examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
-    .example-btn { width: 100%; text-align: left; background: #111827; color: #e2e8f0; border: 1px solid #334155; border-radius: 14px; padding: 14px; cursor: pointer; }
-    .example-btn:hover { border-color: #38bdf8; }
-    label { display: block; margin-bottom: 6px; font-size: 14px; color: #94a3b8; }
-    input { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #334155; background: #020617; color: #f8fafc; }
-    .row { display: grid; grid-template-columns: 180px 1fr; gap: 14px; }
-    button.primary { margin-top: 14px; padding: 12px 16px; border: none; border-radius: 12px; background: #38bdf8; color: #082f49; font-weight: 800; cursor: pointer; }
-    .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
-    .metric { padding: 14px; border-radius: 14px; background: #111827; border: 1px solid #1f2937; }
-    pre { white-space: pre-wrap; word-break: break-word; overflow-x: auto; background: #020617; border: 1px solid #1e293b; border-radius: 14px; padding: 14px; }
-    .two { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; }
-    @media (max-width: 900px) { .two, .row { grid-template-columns: 1fr; } }
-  </style>
-</head>
-<body>
-  <main class="grid">
-    <section class="hero">
-      <h1>Sourcify Contract Analyzer — Cloudflare Worker Edition</h1>
-      <p>Single deployment on Cloudflare Workers. The Worker calls Sourcify directly, computes contract structure, proxy information, storage layout summary, and a spoken-style narration transcript.</p>
-    </section>
-
-    <section class="card">
-      <h2>Example contracts</h2>
-      <div class="examples">
-        ${EXAMPLES.map((example) => `
-          <button class="example-btn" data-chain-id="${example.chainId}" data-address="${example.address}">
-            <strong>${example.label}</strong><br />
-            <small>${example.address}</small>
-            <p>${example.note}</p>
-            <small>${(example.tags || []).join(' · ')}</small>
-          </button>
-        `).join('')}
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Analyze any verified contract</h2>
-      <div class="row">
-        <div>
-          <label for="chainId">Chain ID</label>
-          <input id="chainId" value="1" />
-        </div>
-        <div>
-          <label for="address">Contract address</label>
-          <input id="address" value="${EXAMPLES[0].address}" />
-        </div>
-      </div>
-      <button class="primary" id="analyzeButton">Analyze contract</button>
-    </section>
-
-    <section class="two">
-      <section class="card">
-        <h2>Contract snapshot</h2>
-        <div class="metrics" id="metrics"></div>
-      </section>
-      <section class="card">
-        <h2>Audio transcript analysis</h2>
-        <audio id="audioPlayer" controls style="width: 100%; margin-bottom: 12px;"></audio>
-        <pre id="transcript">Pick an example or enter an address.</pre>
-      </section>
-    </section>
-
-    <section class="two">
-      <section class="card">
-        <h2>Storage layout</h2>
-        <pre id="storage">Waiting for analysis…</pre>
-      </section>
-      <section class="card">
-        <h2>Pragmas and imports</h2>
-        <pre id="details">Waiting for analysis…</pre>
-      </section>
-    </section>
-
-    <section class="card">
-      <h2>Raw structured JSON</h2>
-      <pre id="json">Waiting for analysis…</pre>
-    </section>
-  </main>
-
-  <script>
-    const metrics = document.getElementById('metrics');
-    const transcript = document.getElementById('transcript');
-    const audioPlayer = document.getElementById('audioPlayer');
-    const storage = document.getElementById('storage');
-    const details = document.getElementById('details');
-    const jsonEl = document.getElementById('json');
-    const chainIdInput = document.getElementById('chainId');
-    const addressInput = document.getElementById('address');
-
-    function setMetrics(data) {
-      const metricRows = [
-        ['Compiler', data.compilerVersion],
-        ['Files', data.sourceFileCount],
-        ['Proxy', data.proxy.isProxy ? data.proxy.proxyType || 'yes' : 'No'],
-        ['Functions', data.signatureCounts.functions],
-        ['Events', data.signatureCounts.events],
-        ['Verified', data.verification.verifiedAt || 'unknown'],
-      ];
-      function esc(v) {
-        const d = document.createElement('span');
-        d.textContent = String(v ?? '');
-        return d.innerHTML;
-      }
-      metrics.innerHTML = metricRows.map(([label, value]) => '<div class="metric"><strong>' + esc(label) + '</strong><br /><span>' + esc(value) + '</span></div>').join('');
-    }
-
-    function setDetails(data) {
-      const topPragmas = Object.entries(data.pragmaPerFile).slice(0, 10);
-      const libs = Object.entries(data.libraryUsage).map(([label, count]) => label + ': ' + count).join('\n');
-      details.textContent = [
-        'Top pragma declarations:',
-        ...topPragmas.map(([file, pragma]) => '- ' + file + ': ' + (pragma || 'none')),
-        '',
-        'Library usage summary:',
-        libs || '(none)',
-      ].join('\n');
-    }
-
-    function buildTtsUrl(text) {
-      return 'https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=en&q=' + encodeURIComponent(text.slice(0, 1800));
-    }
-
-    async function analyze(chainId, address) {
-      transcript.textContent = 'Analyzing contract via Worker…';
-      audioPlayer.removeAttribute('src');
-      audioPlayer.load();
-      storage.textContent = 'Loading storage layout…';
-      details.textContent = 'Loading import and pragma details…';
-      jsonEl.textContent = 'Loading JSON…';
-      metrics.innerHTML = '';
-
-      const response = await fetch('/api/analyze?chainId=' + encodeURIComponent(chainId) + '&address=' + encodeURIComponent(address));
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Request failed');
-
-      setMetrics(data.analysis);
-      transcript.textContent = data.analysis.narrationTranscript;
-      audioPlayer.src = buildTtsUrl(data.analysis.narrationTranscript);
-      storage.textContent = data.analysis.storageLayoutDiagram;
-      setDetails(data.analysis);
-      jsonEl.textContent = JSON.stringify(data.analysis, null, 2);
-    }
-
-    document.getElementById('analyzeButton').addEventListener('click', () => {
-      analyze(chainIdInput.value.trim(), addressInput.value.trim()).catch((error) => {
-        transcript.textContent = 'Request failed: ' + error.message;
-        audioPlayer.removeAttribute('src');
-        audioPlayer.load();
-        storage.textContent = '—';
-        details.textContent = '—';
-        jsonEl.textContent = '—';
-      });
-    });
-
-    document.querySelectorAll('.example-btn').forEach((button) => {
-      button.addEventListener('click', () => {
-        chainIdInput.value = button.dataset.chainId;
-        addressInput.value = button.dataset.address;
-        document.getElementById('analyzeButton').click();
-      });
-    });
-  </script>
-</body>
-</html>`;
-}
-
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
+
     if (url.pathname === '/api/examples') {
       return Response.json({ examples: EXAMPLES });
+    }
+
+    if (url.pathname === '/api/chat' && request.method === 'POST') {
+      return handleChatPost(request, env);
     }
 
     if (url.pathname === '/api/analyze') {
@@ -414,8 +240,13 @@ export default {
       }
     }
 
-    return new Response(html(), {
-      headers: { 'content-type': 'text/html; charset=utf-8' },
-    });
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
+    return new Response(
+      'Static UI not built. Run from repo root: cd frontend && npm run build:static-export — then wrangler deploy.',
+      { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } },
+    );
   },
 };

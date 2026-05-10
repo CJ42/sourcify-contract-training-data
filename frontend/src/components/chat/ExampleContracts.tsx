@@ -34,29 +34,32 @@ const EXAMPLES: ExampleContractTemplate[] = [
   },
 ]
 
-function buildPrompt(ex: ExampleContractTemplate): string {
+export function buildExplorePrompt(ex: ExampleContractTemplate): string {
   return (
     `Explore the verified contract **${ex.title}** at \`${ex.address}\` on ${ex.chainLabel} mainnet (chain id ${ex.chainId}). ` +
-    `Give a structured overview: purpose, proxy or proxy-related patterns if relevant, and the main Solidity surfaces or patterns worth studying next.`
+    `Below is the structured Sourcify report (same inputs as the Python CLI); ask follow-ups in chat if you want SOLY to go deeper.`
   )
 }
 
 interface ExampleContractsProps {
-  onSelect: (prompt: string) => void
+  onPickContract: (example: ExampleContractTemplate) => void
 }
 
-export function ExampleContracts({ onSelect }: ExampleContractsProps) {
+export function ExampleContracts({ onPickContract }: ExampleContractsProps) {
   return (
     <div className={styles.section}>
       <h3 className={styles.heading}>Popular contracts</h3>
-      <p className={styles.sub}>Tap a card to drop a ready-made prompt into the chat.</p>
+      <p className={styles.sub}>
+        Fetch verified metadata from Sourcify and render the same style of Markdown report as{' '}
+        <code>contract_analysis_report.md</code> from the Python CLI — then chat with SOLY.
+      </p>
       <div className={styles.grid}>
         {EXAMPLES.map((ex) => (
           <button
             key={ex.address}
             type="button"
             className={`glass-card ${styles.card}`}
-            onClick={() => onSelect(buildPrompt(ex))}>
+            onClick={() => onPickContract(ex)}>
             <span className={styles.cardTitle}>{ex.title}</span>
             <span className={styles.cardDesc}>{ex.description}</span>
             <div className={styles.meta}>

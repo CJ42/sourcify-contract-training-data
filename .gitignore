@@ -7,3 +7,6 @@ backend/db.sqlite3
 storage_layout_image.png
 contract_summary.md
 uniswap_v3_pool_address_usdt.json
+
+frontend/out/
+frontend/.next/

@@ -1,6 +1,6 @@
 'use client'
 
-import { ExampleContracts } from './ExampleContracts'
+import { ExampleContracts, type ExampleContractTemplate } from './ExampleContracts'
 
 const PROMPTS = [
   'Explain how LSP1 Universal Receiver works and when to use it',
@@ -12,10 +12,11 @@ const PROMPTS = [
 ]
 
 interface StarterPromptsProps {
-  onSelect: (prompt: string) => void
+  onTopicSelect: (prompt: string) => void
+  onContractPick: (example: ExampleContractTemplate) => void
 }
 
-export default function StarterPrompts({ onSelect }: StarterPromptsProps) {
+export default function StarterPrompts({ onTopicSelect, onContractPick }: StarterPromptsProps) {
   return (
     <div className="flex flex-col items-center justify-center h-full py-16 text-center">
       <div className="text-5xl font-bold mb-2">
@@ -24,10 +25,10 @@ export default function StarterPrompts({ onSelect }: StarterPromptsProps) {
       </div>
       <p className="text-lg mb-2 font-medium" style={{ color: 'var(--text)' }}>Your Solidity AI coding assistant</p>
       <p className="mb-8" style={{ color: 'var(--muted)' }}>
-        Ask me anything about Solidity, EVM, LSP standards, or Web3 architecture.
+        Ask questions about Solidity and Web3 — or open a verified contract report from Sourcify (same pipeline as the CLI).
       </p>
 
-      <ExampleContracts onSelect={onSelect} />
+      <ExampleContracts onPickContract={onContractPick} />
 
       <p
         className="text-xs font-semibold uppercase tracking-wide mb-3 w-full max-w-2xl text-left"
@@ -39,7 +40,7 @@ export default function StarterPrompts({ onSelect }: StarterPromptsProps) {
         {PROMPTS.map((prompt) => (
           <button
             key={prompt}
-            onClick={() => onSelect(prompt)}
+            onClick={() => onTopicSelect(prompt)}
             className="glass-card p-4 text-sm text-left transition-all hover:-translate-y-0.5 cursor-pointer">
             {prompt}
           </button>

@@ -1,17 +1,23 @@
 'use client'
 
+import type { UIMessage } from 'ai'
 import { useChat } from '@ai-sdk/react'
 import { useState, useEffect, useRef } from 'react'
 import MessageList from './MessageList'
 import StarterPrompts from './StarterPrompts'
 import ChatInput from './ChatInput'
+import {
+  buildExplorePrompt,
+  type ExampleContractTemplate,
+} from './ExampleContracts'
+import { buildSourcifyAnalysisMarkdown } from '@/lib/sourcify-analysis-markdown'
 
 export default function ChatInterface() {
-  // Default transport sends to /api/chat — no config needed
-  const { messages, sendMessage, status } = useChat()
+  const { messages, sendMessage, status, error, clearError, setMessages } = useChat()
 
   const [input, setInput] = useState('')
-  const isLoading = status === 'submitted' || status === 'streaming'
+  const [analysisBusy, setAnalysisBusy] = useState(false)
+  const isLoading = status === 'submitted' || status === 'streaming' || analysisBusy
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -20,23 +26,76 @@ export default function ChatInterface() {
 
   const handleSend = async (text: string) => {
     if (!text.trim() || isLoading) return
+    clearError?.()
     setInput('')
     await sendMessage({ text: text.trim() })
   }
 
+  const handleContractPick = async (ex: ExampleContractTemplate) => {
+    clearError?.()
+    const userText = buildExplorePrompt(ex)
+    const userMsg: UIMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      parts: [{ type: 'text', text: userText }],
+    }
+    setMessages([userMsg])
+    setAnalysisBusy(true)
+
+    try {
+      const res = await fetch(
+        `/api/analyze?chainId=${ex.chainId}&address=${encodeURIComponent(ex.address)}`,
+      )
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(
+          typeof data.error === 'string' ? data.error : `HTTP ${res.status}`,
+        )
+      }
+      const md = buildSourcifyAnalysisMarkdown(data.analysis, {
+        title: `${ex.title} — Sourcify report`,
+      })
+      const assistantMsg: UIMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        parts: [{ type: 'text', text: md, state: 'done' }],
+      }
+      setMessages([userMsg, assistantMsg])
+    } catch (e) {
+      const err = e instanceof Error ? e.message : String(e)
+      const assistantMsg: UIMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        parts: [
+          {
+            type: 'text',
+            text: `## Could not load Sourcify analysis\n\n${err}\n\n- Local dev: run **next dev** so **GET /api/analyze** is available.\n- Deployed: use the Cloudflare Worker URL (same **/api/analyze** route).`,
+            state: 'done',
+          },
+        ],
+      }
+      setMessages([userMsg, assistantMsg])
+    } finally {
+      setAnalysisBusy(false)
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 max-w-4xl mx-auto w-full px-4">
-      {/* Messages area */}
       <div className="flex-1 overflow-y-auto py-8 space-y-6">
         {messages.length === 0 ? (
-          <StarterPrompts onSelect={handleSend} />
+          <StarterPrompts onTopicSelect={handleSend} onContractPick={handleContractPick} />
         ) : (
-          <MessageList messages={messages} isLoading={isLoading} />
+          <MessageList
+            messages={messages}
+            isLoading={isLoading}
+            chatError={error}
+            onDismissError={() => clearError?.()}
+          />
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
       <div className="py-4 border-t" style={{ borderColor: 'rgba(0,0,0,0.08)' }}>
         <ChatInput
           input={input}
