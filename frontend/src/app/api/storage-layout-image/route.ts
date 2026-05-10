@@ -44,7 +44,7 @@ Generate an image of the storage layout of the following smart contract using th
         prompt: fullPrompt,
         n: 1,
         size: '1024x1024',
-        response_format: 'b64_json',
+        // GPT image models do not support `response_format` (DALL·E only); they return b64_json by default.
       }),
     })
 
