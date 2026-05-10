@@ -1,5 +1,7 @@
 'use client'
 
+import { ExampleContracts } from './ExampleContracts'
+
 const PROMPTS = [
   'Explain how LSP1 Universal Receiver works and when to use it',
   'Review this Solidity contract for security vulnerabilities',
@@ -21,8 +23,16 @@ export default function StarterPrompts({ onSelect }: StarterPromptsProps) {
         <span style={{ color: 'var(--text)' }}>SOLY</span>
       </div>
       <p className="text-lg mb-2 font-medium" style={{ color: 'var(--text)' }}>Your Solidity AI coding assistant</p>
-      <p className="mb-10" style={{ color: 'var(--muted)' }}>
+      <p className="mb-8" style={{ color: 'var(--muted)' }}>
         Ask me anything about Solidity, EVM, LSP standards, or Web3 architecture.
+      </p>
+
+      <ExampleContracts onSelect={onSelect} />
+
+      <p
+        className="text-xs font-semibold uppercase tracking-wide mb-3 w-full max-w-2xl text-left"
+        style={{ color: 'var(--muted)' }}>
+        Topics
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl w-full text-left">

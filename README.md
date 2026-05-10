@@ -6,19 +6,25 @@ Python tooling to collect and analyze verified smart-contract data from [Sourcif
 
 ## Architecture
 
+**Primary Python path — CLI (no Django required)**
+
 ```text
-Frontend page (frontend/public/index.html)
+python3 main.py  (or python3 src/main.py)
         ↓
-Express gateway (frontend/server.js)
+src/fetch_contract.py → Sourcify (+ optional Etherscan)
         ↓
-Django API (backend/api/views.py)
-        ↓
-Python analysis service (src/service.py + src/analyser.py)
-        ↓
-Sourcify API
+src/analyser.py → Markdown reports, storage layout image, optional OpenAI
 ```
 
-### Alternative: Cloudflare Worker (edge deployment)
+**SOLY web chat (Next.js)**
+
+```text
+Browser → frontend (Next.js app router)
+        ↓
+/api/chat → OpenAI (Solidity assistant UI)
+```
+
+### Cloudflare Worker (edge deployment)
 
 ```text
 Browser
@@ -28,16 +34,28 @@ Cloudflare Worker (cloudflare-worker/src/index.js)
 Sourcify API
 ```
 
-The Worker replaces the Express + Django stack for a zero-infra, single-file edge deployment.
-It is the recommended demo path for hackathon judges who want a live URL.
+The Worker is a zero-infra, single-file edge deployment for demos.
+
+### Optional: Django REST API
+
+```text
+Express (frontend/server.js) or direct POST
+        ↓
+Django (backend/api/views.py) → src/service.py + src/analyser.py
+        ↓
+Sourcify API
+```
+
+Install Django only if you use this stack (`pip install -r backend/requirements.txt`).
 
 ## Repo layout
 
 ```text
-backend/           Django project + API endpoints
-frontend/          Next.js + Express gateway + static frontend page
-cloudflare-worker/ Edge demo: Worker serves HTML + analysis API without Django or Express
-src/               Core Python analysis logic (used by both Django and the CLI)
+main.py            Repo-root wrapper; runs src/main.py CLI
+src/               Core Python: CLI, analyser, fetch_contract, optional service helpers
+backend/           Optional Django API (not needed for the CLI)
+frontend/          Next.js app (SOLY chat) + legacy Express gateway (server.js)
+cloudflare-worker/ Edge Worker + static HTML demo
 ```
 
 ## Requirements
@@ -97,47 +115,19 @@ cp .env.example .env
 | -------- | ------- |
 | `OPENAI_API_KEY` | Required for `--mode run` (text analysis) and storage layout images. |
 | `ETHERSCAN_API_KEY` | Optional fallback after Sourcify fails. |
-| `DJANGO_SECRET_KEY` | Required in non-dev Django environments. |
-| `DJANGO_ENV` | Set to `production` to harden Django settings. |
+| `DJANGO_SECRET_KEY` | Only if you run the optional Django backend. |
+| `DJANGO_ENV` | Only if you run Django; set to `production` to harden settings. |
 | `INTERNAL_GATEWAY_SECRET` | Optional shared secret between Express and Django. |
 
-## Option A: Cloudflare Worker (recommended for demos)
-
-```bash
-cd cloudflare-worker
-npm install
-npx wrangler login
-npx wrangler deploy
-```
-
-> 🔗 **Live demo:** *(paste your Workers URL here after deploy)*
-
-## Option B: Local full-stack (Django + Express)
-
-### Backend (Django)
-
-```bash
-export DJANGO_SECRET_KEY="your-secret-key"
-export DJANGO_ENV=development
-python3 backend/manage.py migrate
-python3 backend/manage.py runserver 127.0.0.1:8000
-```
-
-### Frontend (Express gateway)
-
-```bash
-cd frontend
-npm install
-npm start
-```
-
-## Option C: CLI (Python)
+## Option A: CLI (Python) — default tooling
 
 From the repository root (with virtual environment activated):
 
 ```bash
-python3 src/main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
+python3 main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
 ```
+
+Same program as `python3 src/main.py …`.
 
 ### Arguments
 
@@ -159,13 +149,59 @@ python3 src/main.py --chain <CHAIN_ID> --address <CONTRACT_ADDRESS>
 
 ```bash
 # Full pipeline
-python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
+python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36
 
 # Download JSON only
-python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode fetch -o dump.json
+python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode fetch -o dump.json
 
 # Reports and storage image only (no OpenAI)
-python3 src/main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode analyze
+python3 main.py --chain 1 --address 0x4e68Ccd3E89f51C3074ca5072bbAC773960dFa36 --mode analyze
+```
+
+## Option B: Cloudflare Worker (recommended for demos)
+
+```bash
+cd cloudflare-worker
+npm install
+npx wrangler login
+npx wrangler deploy
+```
+
+> 🔗 **Live demo:** *(paste your Workers URL here after deploy)*
+
+## Option C: Next.js SOLY chat (local)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Configure `OPENAI_API_KEY` (and any model keys) via `frontend/.env.local` as needed for `/api/chat`.
+
+## Option D: Optional full-stack (Django + Express gateway)
+
+Install backend dependencies (adds Django on top of the base `requirements.txt`):
+
+```bash
+python3 -m pip install -r backend/requirements.txt
+```
+
+### Backend (Django)
+
+```bash
+export DJANGO_SECRET_KEY="your-secret-key"
+export DJANGO_ENV=development
+python3 backend/manage.py migrate
+python3 backend/manage.py runserver 127.0.0.1:8000
+```
+
+### Frontend (legacy Express gateway for `public/index.html`)
+
+```bash
+cd frontend
+npm install
+node server.js
 ```
 
 ## Security notes
@@ -188,7 +224,8 @@ deactivate
 | Package    | Purpose |
 | ---------- | ------- |
 | `requests` | HTTP client for Sourcify API |
-| `Django`   | Backend API server |
+| `openai` / `python-dotenv` | CLI analysis and env loading |
+| `Django`   | Optional; install via [`backend/requirements.txt`](./backend/requirements.txt) only if you run the Django API |
 
 Pinned versions in [`requirements.txt`](./requirements.txt).
 
