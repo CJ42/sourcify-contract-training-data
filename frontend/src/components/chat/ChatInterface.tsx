@@ -104,7 +104,7 @@ export default function ChatInterface() {
     <div className="flex flex-col flex-1 max-w-4xl mx-auto w-full px-4">
       <div className="flex-1 overflow-y-auto py-8 space-y-6">
         {messages.length === 0 ? (
-          <StarterPrompts onTopicSelect={handleSend} onContractPick={handleContractPick} />
+          <StarterPrompts onContractPick={handleContractPick} />
         ) : (
           <MessageList
             messages={messages}

@@ -13,11 +13,14 @@ export default function Nav() {
 
         {/* Nav links */}
         <div className="hidden md:flex items-center gap-1 flex-1 justify-center">
-          {['Features', 'About'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`}
+          {[
+            { label: 'Features', hash: 'features' },
+            { label: 'About', hash: 'how-it-works' },
+          ].map((item) => (
+            <a key={item.label} href={`#${item.hash}`}
               className="px-3 py-1.5 text-[14px] font-medium rounded-full transition-all hover:bg-white/30"
               style={{ color: 'var(--text-secondary)' }}>
-              {item}
+              {item.label}
             </a>
           ))}
         </div>

@@ -21,20 +21,48 @@ const features = [
 const steps = [
   {
     number: '01',
-    title: 'Paste your contract',
-    desc: 'Drop your broken Solidity code into the chat. SOLY reads it like a senior engineer.',
+    title: 'Enter a contract address',
+    desc:
+      'Paste a verified smart contract address (for example on Ethereum). SOLY fetches metadata and source from Sourcify, with Etherscan as a fallback when verification lives there instead.',
+    logos: ['sourcify', 'etherscan'] as const,
   },
   {
     number: '02',
-    title: 'SOLY diagnoses',
-    desc: 'From Stack too deep to subtle reentrancy — SOLY explains the problem precisely.',
+    title: 'Analyze verified sources',
+    desc:
+      'SOLY loads Sourcify- or Etherscan-verified contract data, mirrors the Python CLI analysis, and generates a storage layout diagram plus structured Markdown so you can see slots, proxies, and dependencies at a glance.',
+    logos: [] as const,
   },
   {
     number: '03',
-    title: 'Ship working code',
-    desc: 'Get a corrected contract with inline comments and architecture notes.',
+    title: 'Understand & integrate',
+    desc:
+      'Chat with SOLY to learn how the contract works and how to integrate with it—surface area, storage, and practical call patterns—using responses powered by OpenAI.',
+    logos: [] as const,
   },
 ]
+
+function StepLogos({ kinds }: { kinds: readonly ('sourcify' | 'etherscan')[] }) {
+  if (kinds.length === 0) return null
+  return (
+    <div className="flex flex-wrap items-center gap-4 mt-4">
+      {kinds.includes('sourcify') ? (
+        <img
+          src="/sourcify-logo.png"
+          alt="Sourcify"
+          className="h-7 w-auto object-contain opacity-90"
+        />
+      ) : null}
+      {kinds.includes('etherscan') ? (
+        <img
+          src="/etherscan-logo.png"
+          alt="Etherscan"
+          className="h-7 w-auto object-contain opacity-90"
+        />
+      ) : null}
+    </div>
+  )
+}
 
 export default function Home() {
   return (
@@ -59,13 +87,20 @@ export default function Home() {
         </h1>
 
         {/* Sub-headline */}
-        <p className="text-[18px] md:text-[20px] mb-12 max-w-lg leading-relaxed"
+        <p className="text-[18px] md:text-[20px] mb-6 max-w-xl leading-relaxed"
           style={{ color: 'var(--text-secondary)' }}>
-          From{' '}
-          <span className="font-mono text-[16px] font-medium" style={{ color: 'var(--text-primary)' }}>Stack too deep</span>
-          {' '}to{' '}
-          <span className="font-mono text-[16px] font-medium" style={{ color: 'var(--text-primary)' }}>Build successful</span>
-          {' '}in seconds.
+          Explore verified contracts from Sourcify and Etherscan — storage layouts, reports, and chat that help you learn how protocols work and how to build against them.
+        </p>
+
+        <p className="text-[14px] mb-10 flex flex-col sm:flex-row items-center justify-center gap-3"
+          style={{ color: 'var(--text-tertiary)' }}>
+          <span>Leverages</span>
+          <img
+            src="/openai-logo.png"
+            alt="OpenAI"
+            className="h-5 w-auto object-contain opacity-90"
+          />
+          <span>for conversational analysis and diagram generation.</span>
         </p>
 
         {/* CTA */}
@@ -103,7 +138,7 @@ export default function Home() {
       </section>
 
       {/* How it works */}
-      <section id="features" className="max-w-5xl mx-auto px-6 py-24">
+      <section id="how-it-works" className="max-w-5xl mx-auto px-6 py-24">
         <div className="text-center mb-16">
           <h2 className="text-[40px] font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
             How it works
@@ -121,26 +156,11 @@ export default function Home() {
               <p className="text-[15px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                 {step.desc}
               </p>
+              <StepLogos kinds={step.logos} />
             </div>
           ))}
         </div>
       </section>
-
-      {/* Bottom CTA */}
-      {/* <section className="max-w-3xl mx-auto px-6 py-24 text-center">
-        <div className="glass-card p-16">
-          <h2 className="text-[40px] font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-            Ready to ship better contracts?
-          </h2>
-          <p className="text-[18px] mb-10" style={{ color: 'var(--text-secondary)' }}>
-            Join the waitlist. Be first to access SOLY.
-          </p>
-          <Link href="/waitlist"
-            className="glass-button-dark inline-block px-10 py-4 text-[17px] font-semibold">
-            Join the waitlist
-          </Link>
-        </div>
-      </section> */}
 
       {/* Footer */}
       <footer className="py-8 text-center" style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
